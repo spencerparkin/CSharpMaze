@@ -1,0 +1,259 @@
+// Maze.cs
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+
+namespace CSharpMaze
+{
+    //============================================================================================================
+    // A graph, in our case, is one or more nodes connected by directionless edges.  Each node of the graph is given
+    // a location in space.  For the purpose of generating mazes in a plane, edges are not allowed to cross one another.
+    class Graph
+    {
+        delegate Node CreateNodeDelegate( float x, float y );
+
+        private CreateNodeDelegate nodeCreator;
+
+        //============================================================================================================
+        public Graph( CreateNodeDelegate nodeCreator )
+        {
+            this.nodeCreator = nodeCreator;
+        }
+
+        //============================================================================================================
+        public void Clear()
+        {
+            //...
+        }
+
+        //============================================================================================================
+        public bool InsertNode( Node node )
+        {
+            // Nodes are aware of what graphs they are members of, and will reject membership if already a member.
+            if( !node.BecomeMemberOfGraph( this ) )
+                return false;
+
+            nodeList.Add( node );       // Is insertion and removal O(1) in C#?
+            return true;
+        }
+
+        //============================================================================================================
+        public bool RemoveNode( Node node )
+        {
+            if( !node.BecomeNonMemberOfGraph( this ) )
+                return false;
+
+            nodeList.Remove( node );
+            return true;
+        }
+
+        // TODO: Add method that returns the list of all adjacencies in the graph in the form of Node pairs.
+
+        //============================================================================================================
+        // A graph houses a collection of nodes.  We would like any one particular node instance to be housable by multiple
+        // graph instances.  This presents a complications.  The list of adjacencies for a given node depends upon the graph to
+        // which it is a member.  To account for this, each node must, in return, be aware of all graphs it is contained within.
+        // When adjacency information for a given node is desired, the caller must indicate which graph this is in relation to.
+        // Perhaps there is a better solution to this problem?
+        public class Node
+        {
+            public Node( float x, float y )
+            {
+                this.x = x;
+                this.y = y;
+            }
+
+            // One problem with this scheme is that class derivatives of Node cannot
+            // easily extend the information given here if they so desired.
+            public class GraphMembershipInfo
+            {
+                public GraphMembershipInfo( Graph graph )
+                {
+                    this.graph = graph;
+                }
+
+                public Graph graph;
+                public List< Node > adjacencyList;
+            }
+
+            // As a node can be a member of multiple graphs, we keep membership information
+            // for this node for each graph to which it is a member.
+            private List< GraphMembershipInfo > graphMembershipInfoList;
+
+            public GraphMembershipInfo GetGraphMembershipInfo( Graph graph )
+            {
+                // Perform a linear search for the relatvent adjacency list.
+                // A linear search is okay if we don't expect any single node
+                // to be a member of too many different graph instances.
+                for( int index = 0; index < graphMembershipInfoList.Count; index++ )
+                {
+                    GraphMembershipInfo membershipInfo = graphMembershipInfoList[ index ];
+                    if( membershipInfo.graph == graph )
+                        return membershipInfo;
+                }
+                return null;
+            }
+
+            public bool IsMemberOfGraph( Graph graph )
+            {
+                GraphMembershipInfo membershipInfo = GetGraphMembershipInfo( graph );
+                if( membershipInfo == null )
+                    return false;
+                return true;
+            }
+
+            public bool BecomeMemberOfGraph( Graph graph )
+            {
+                if( IsMemberOfGraph( graph ) )
+                    return false;
+                GraphMembershipInfo membershipInfo = new GraphMembershipInfo( graph );
+                graphMembershipInfoList.Add( membershipInfo );
+                return true;
+            }
+
+            public bool BecomeNonMemberOfGraph( Graph graph )
+            {
+                GraphMembershipInfo membershipInfo = GetGraphMembershipInfo( graph );
+                if( membershipInfo == null )
+                    return false;
+                graphMembershipInfoList.Remove( membershipInfo );
+                return true;
+            }
+
+            public bool GetAdjacencyList( Graph graph, out List< Node > adjacencyList )
+            {
+                adjacencyList = null;
+                GraphMembershipInfo membershipInfo = GetGraphMembershipInfo( graph );
+                if( membershipInfo == null )
+                    return false;
+                adjacencyList = membershipInfo.adjacencyList;
+                return true;
+            }
+
+            // An adjacency cannot be created between a node and itself,
+            // nor can it be created between two nodes in different graphs.
+            // The program currently has no need to destroy any created adjacencies.
+            public bool CreateAdjacency( Graph graph, Node node )
+            {
+                if( this == node )
+                    return false;
+                List< Node > thisNodeAdjList, givenNodeAdjList;
+                if( !GetAdjacencyList( graph, out thisNodeAdjList ) )
+                    return false;
+                if( !node.GetAdjacencyList( graph, out givenNodeAdjList ) )
+                    return false;
+                thisNodeAdjList.Add( node );
+                givenNodeAdjList.Add( this );
+                return true;
+            }
+
+            private float x, y;
+
+            public float X
+            {
+                set { this.x = value; }
+                get { return this.x; }
+            }
+            public float Y
+            {
+                set { this.y = value; }
+                get { return this.x; }
+            }
+        }
+
+        private List< Node > nodeList;
+    }
+
+    //============================================================================================================
+    // This type of graph arrays its nodes in a rectangular grid-like pattern.  The edges of the graph mark the
+    // adjacencies between the nodes in the grid.
+    class RectangularGraph : Graph
+    {
+        public RectangularGraph( CreateNodeDelegate nodeCreator )
+        {
+            
+        }
+
+        public void RegenerateGraph( int rowCount, int columnCount )
+        {
+            Clear();
+
+            //...
+        }
+
+        // When we go create the graph, we need to use a delegate
+        // to create the graph nodes, because the user may want
+        // graph nodes of a derived type.
+
+        
+    }
+
+    //============================================================================================================
+    class CircularGraph : Graph
+    {
+        public CircularGraph( CreateNodeDelegate nodeCreator )
+        {
+            Graph( nodeCreator );
+        }
+
+        public void RegenerateGraph( int concentricCircleCount )
+        {
+            Clear();
+
+            //...
+        }
+    }
+
+    //============================================================================================================
+    // A maze is a randomly generated spanning tree of a given graph.  We generate this spanning tree by using an
+    // algorithm based upon the disjoint set forest data-structure.
+    class Maze
+    {
+        public Maze( Graph graph )
+        {
+            this.graph = graph;
+        }
+
+        public Maze.Node CreateMazeNode( float x, float y )
+        {
+            return new Maze.Node( x, y );
+        }
+
+        public void Regenerate( void )
+        {
+            if( spanningTree == null )
+                spanningTree = new Graph( CreateMazeNode );
+
+            spanningTree.Clear();
+
+            //...create random spanning tree here...
+
+            //...add all nodes in the graph to the spanning tree...
+
+            //...generate a list of all possible adjacencies...
+            
+            //...randomly iterating over that list (use yield keyword?),
+            //...create an adjacency in the spanning tree if the two
+            //...nodes connected by that adjacency are not members of
+            //...the same set.  nodes connected in the spanning tree
+            //...by a new adjacency in that spanning tree become members
+            //...of the same set.
+        }
+
+        private class Node : Graph.Node
+        {
+            public Node( float x, float y ) : Graph.Node( x, y )
+            {
+                representativeNode = null;
+            }
+
+            private Node representativeNode;
+        }
+
+        public Graph graph;
+        public Graph spanningTree;
+    }
+}
+
+// Maze.cs
