@@ -3,6 +3,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 
 namespace CSharpMaze
 {
@@ -221,6 +222,11 @@ namespace CSharpMaze
         public Graph.Node MazeNodeCreator( Node.Point point )
         {
             return new Maze.Node( point );
+        }
+
+        public bool Render( Bitmap bitmap )
+        {
+            return true;
         }
 
         public void Generate( int seed )
