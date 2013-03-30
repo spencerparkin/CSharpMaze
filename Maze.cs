@@ -149,6 +149,18 @@ namespace CSharpMaze
 
         public abstract void GenerateGraphShape();
 
+        protected Node mazeStart;
+        protected Node mazeFinish;
+
+        public Node MazeStart
+        {
+            get { return mazeStart; }
+        }
+        public Node MazeFinish
+        {
+            get { return mazeFinish; }
+        }
+
         protected float minX, maxX;
         protected float minY, maxY;
 
@@ -235,6 +247,9 @@ namespace CSharpMaze
                     }
                 }
             }
+
+            mazeStart = nodeMatrix[ 0, 0 ];
+            mazeFinish = nodeMatrix[ rowCount - 1, colCount - 1 ];
         }
 
         private int rowCount;
@@ -293,6 +308,8 @@ namespace CSharpMaze
 
             Node centerNode = CreateNode( new Node.Point( 0.0f, 0.0f ) );
             Insert( centerNode );
+            mazeStart = centerNode;
+            mazeFinish = nodeRingArray[ concentricCircleCount - 1 ][0];
 
             Adjacency adjacency = new Adjacency( centerNode, nodeRingArray[0][0] );
             Insert( adjacency );
@@ -336,6 +353,8 @@ namespace CSharpMaze
         public Maze( ShapeGraph graph )
         {
             this.graph = graph;
+
+            solutionSet = new List< Graph.Adjacency >();
         }
 
         public Graph.Node MazeNodeCreator( Node.Point point )
@@ -394,7 +413,15 @@ namespace CSharpMaze
                 graphics.DrawLine( pen, drawPointA, drawPointB );
             }
 
-            // TODO: Also render solution if we have it.
+            // Draw the solution too if one was generated.
+            pen.Width = 1;
+            pen.Color = Color.Red;
+            foreach( Graph.Adjacency adjacency in solutionSet )
+            {
+                System.Drawing.Point drawPointA, drawPointB;
+                ImageSpaceAdjacency( bitmap, adjacency, out drawPointA, out drawPointB );
+                graphics.DrawLine( pen, drawPointA, drawPointB );
+            }
             
             return true;
         }
@@ -444,20 +471,82 @@ namespace CSharpMaze
                 if( setCount == 1 )
                     break;
             }
+        }
 
-            // TODO: Find solution too if asked to do so.
-            //       A starting and ending node will have to
-            //       be defined before a solution can be found.
+        public bool Solve()
+        {
+            solutionSet.Clear();
+
+            if( spanningTree == null || spanningTree.SetOfAdjacencies.Count == 0 )
+                return false;
+
+            if( graph.MazeStart == null || graph.MazeFinish == null )
+                return false;
+
+            // At this point, if we fail to find a solution, it means there is a problem
+            // with our maze generation algorithm.
+
+            foreach( Node node in spanningTree.SetOfNodes )
+                node.visited = false;
+
+            foreach( Graph.Adjacency adjacency in spanningTree.SetOfAdjacencies )
+            {
+                Node nodeA = ( Node )adjacency.NodeA;
+                Node nodeB = ( Node )adjacency.NodeB;
+
+                nodeA.adjNodeList.Add( nodeB );
+                nodeB.adjNodeList.Add( nodeA );
+            }
+
+            Queue< Node > queue = new Queue< Node >();
+            queue.Enqueue( ( Node )graph.MazeStart );
+
+            while( queue.Count > 0 )
+            {
+                Node node = queue.Dequeue();
+                node.visited = true;
+
+                if( node == graph.MazeFinish )
+                    break;
+
+                foreach( Node adjNode in node.adjNodeList )
+                {
+                    if( !adjNode.visited )
+                    {
+                        adjNode.nodeParent = node;
+                        queue.Enqueue( adjNode );
+                    }
+                }
+            }
+
+            for( Node node = ( Node )graph.MazeFinish; node != null; node = node.nodeParent )
+                node.partOfSolution = true;
+
+            foreach( Graph.Adjacency adjacency in spanningTree.SetOfAdjacencies )
+            {
+                Node nodeA = ( Node )adjacency.NodeA;
+                Node nodeB = ( Node )adjacency.NodeB;
+
+                if( nodeA.partOfSolution && nodeB.partOfSolution )
+                    solutionSet.Add( adjacency );
+            }
+
+            return true;
         }
 
         private ShapeGraph graph;
         private Graph spanningTree;
+        private List< Graph.Adjacency > solutionSet;
 
         private class Node : Graph.Node
         {
             public Node( Point point ) : base( point )
             {
                 nodeLink = null;
+                visited = false;
+                partOfSolution = false;
+                adjNodeList = new List< Node >();
+                nodeParent = null;
             }
 
             public Node FindRepresentative()
@@ -499,7 +588,12 @@ namespace CSharpMaze
                 return true;
             }
 
-            Node nodeLink;
+            private Node nodeLink;
+
+            public bool visited;
+            public bool partOfSolution;
+            public List< Node > adjNodeList;
+            public Node nodeParent;
         }
     }
 }
