@@ -241,17 +241,89 @@ namespace CSharpMaze
         private int colCount;
     }
 
-    /*
     class CircularGraph : ShapeGraph
     {
         public CircularGraph( int concentricCircleCount )
         {
+            minX = -( float )concentricCircleCount * 0.5f - 0.5f;
+            maxX = ( float )concentricCircleCount * 0.5f + 0.5f;
+            minY = -( float )concentricCircleCount * 0.5f - 0.5f;
+            maxY = ( float )concentricCircleCount * 0.5f + 0.5f;
+
             this.concentricCircleCount = concentricCircleCount;
+        }
+
+        public override void GenerateGraphShape()
+        {
+            ClearAll();
+
+            Node[][] nodeRingArray = new Node[ concentricCircleCount ][];
+
+            int nodesPerRing = 7;
+            float radiusDelta = 0.5f;
+            float radius = 0.5f;
+
+            for( int ringIndex = 0; ringIndex < concentricCircleCount; ringIndex++ )
+            {
+                Node[] nodeRing = new Node[ nodesPerRing ];
+                nodeRingArray[ ringIndex ] = nodeRing;
+
+                for( int index = 0; index < nodesPerRing; index++ )
+                {
+                    float angle = ( float )index / ( float )nodesPerRing * 2.0f * ( float )Math.PI;
+                    float x = radius * ( float )Math.Cos( angle );
+                    float y = radius * ( float )Math.Sin( angle );
+
+                    Node.Point location = new Node.Point( x, y );
+                    Node node = CreateNode( location );
+                    nodeRing[ index ] = node;
+                    Insert( node );
+                }
+
+                radius += radiusDelta;
+
+                if( ringIndex < concentricCircleCount - 1 )
+                {
+                    float angle = ( 1.0f / ( float )nodesPerRing ) * 2.0f * ( float )Math.PI;
+                    float arcLength = radius * angle;
+                    if( arcLength > 1.0f )
+                        nodesPerRing *= 2;
+                }                
+            }
+
+            for( int ringIndex = 0; ringIndex < concentricCircleCount; ringIndex++ )
+            {
+                Node[] nodeRing = nodeRingArray[ ringIndex ];
+                Node[] nextNodeRing = null;
+                int indexScalar = 1;
+                if( ringIndex < concentricCircleCount - 1 )
+                {
+                    nextNodeRing = nodeRingArray[ ringIndex + 1 ];
+                    if( nextNodeRing.Length > nodeRing.Length )
+                        indexScalar = 2;
+                }
+
+                for( int index = 0; index < nodeRing.Length; index++ )
+                {
+                    int nextIndex = ( index + 1 ) % nodeRing.Length;
+                    Node nodeA = nodeRing[ index ];
+                    Node nodeB = nodeRing[ nextIndex ];
+                    Adjacency adjacency = new Adjacency( nodeA, nodeB );
+                    Insert( adjacency );
+
+                    if( nextNodeRing != null )
+                    {
+                        nodeA = nodeRing[ index ];
+                        nodeB = nextNodeRing[ index * indexScalar ];
+                        adjacency = new Adjacency( nodeA, nodeB );
+                        Insert( adjacency );
+                    }
+                }
+            }
         }
 
         private int concentricCircleCount;
     }
-    */
 
     class Maze
     {
@@ -279,7 +351,7 @@ namespace CSharpMaze
 
         public bool Render( Bitmap bitmap )
         {
-            if (spanningTree == null || spanningTree.SetOfNodes.Count == 0)
+            if( spanningTree == null || spanningTree.SetOfNodes.Count == 0 )
                 return false;
 
             float aspectRatio = ( float )bitmap.Width / ( float )bitmap.Height;
@@ -290,20 +362,20 @@ namespace CSharpMaze
             Rectangle rectangle = new Rectangle( 0, 0, bitmap.Width, bitmap.Height );
             graphics.FillRectangle( new SolidBrush( Color.Black ), rectangle );
 
-            float maxDistance = 0.0f;
+            float minDistance = 999.0f;
             foreach( Graph.Adjacency adjacency in spanningTree.SetOfAdjacencies )
             {
                 System.Drawing.Point drawPointA, drawPointB;
                 ImageSpaceAdjacency( bitmap, adjacency, out drawPointA, out drawPointB );
                 float dx = drawPointA.X - drawPointB.X;
-                float dy = drawPointB.X - drawPointB.X;
+                float dy = drawPointA.Y - drawPointB.Y;
                 float distance = ( float )Math.Sqrt( dx * dx + dy * dy );
-                if( maxDistance < distance )
-                    maxDistance = distance;
+                if( minDistance > distance )
+                    minDistance = distance;
             }
 
             Pen pen = new Pen( Color.White);
-            pen.Width = ( int )( maxDistance / 2.0f );
+            pen.Width = ( int )( minDistance / 2.0f );
             pen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
             pen.StartCap = System.Drawing.Drawing2D.LineCap.Round;
 

@@ -13,9 +13,11 @@ namespace CSharpMaze
         // This is the program entry point.
         static void Main( string[] args )
         {
-            RectangularGraph rectangularGraph = new RectangularGraph( 10, 20 );
+            //RectangularGraph rectangularGraph = new RectangularGraph( 10, 20 );
+            //Maze maze = new Maze( rectangularGraph );
 
-            Maze maze = new Maze( rectangularGraph );
+            CircularGraph circularGraph = new CircularGraph( 10 );
+            Maze maze = new Maze( circularGraph );
 
             int second = DateTime.Now.Second;
             int millisecond = DateTime.Now.Millisecond;
