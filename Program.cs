@@ -13,11 +13,36 @@ namespace CSharpMaze
         // This is the program entry point.
         static void Main( string[] args )
         {
-            //RectangularGraph rectangularGraph = new RectangularGraph( 10, 20 );
-            //Maze maze = new Maze( rectangularGraph );
+            ShapeGraph graph = null;
 
-            CircularGraph circularGraph = new CircularGraph( 10 );
-            Maze maze = new Maze( circularGraph );
+            if( args.Length > 0 )
+            {
+                if( args[0] == "rect" )
+                {
+                    if( args.Length > 2 )
+                    {
+                        int rows = Convert.ToInt32( args[1] );
+                        int cols = Convert.ToInt32( args[2] );
+                        graph = new RectangularGraph( rows, cols );
+                    }
+                }
+                else if( args[0] == "circle" )
+                {
+                    if( args.Length > 1 )
+                    {
+                        int concentricCircles = Convert.ToInt32( args[1] );
+                        graph = new CircularGraph( concentricCircles );
+                    }
+                }
+            }
+            
+            if( graph == null )
+            {
+                System.Console.WriteLine( "Usage: CSharpMaze [rect|circle] [(rows,cols)|circle]" );
+                return;
+            }
+
+            Maze maze = new Maze( graph );
 
             int second = DateTime.Now.Second;
             int millisecond = DateTime.Now.Millisecond;
@@ -25,9 +50,7 @@ namespace CSharpMaze
             maze.Generate( seed );
 
             Bitmap bitmap = new Bitmap( 1024, 1024, System.Drawing.Imaging.PixelFormat.Format24bppRgb );
-
             maze.Render( bitmap );
-
             bitmap.Save( "Maze.jpg" );
         }
     }
