@@ -291,6 +291,12 @@ namespace CSharpMaze
                 }                
             }
 
+            Node centerNode = CreateNode( new Node.Point( 0.0f, 0.0f ) );
+            Insert( centerNode );
+
+            Adjacency adjacency = new Adjacency( centerNode, nodeRingArray[0][0] );
+            Insert( adjacency );
+
             for( int ringIndex = 0; ringIndex < concentricCircleCount; ringIndex++ )
             {
                 Node[] nodeRing = nodeRingArray[ ringIndex ];
@@ -308,7 +314,7 @@ namespace CSharpMaze
                     int nextIndex = ( index + 1 ) % nodeRing.Length;
                     Node nodeA = nodeRing[ index ];
                     Node nodeB = nodeRing[ nextIndex ];
-                    Adjacency adjacency = new Adjacency( nodeA, nodeB );
+                    adjacency = new Adjacency( nodeA, nodeB );
                     Insert( adjacency );
 
                     if( nextNodeRing != null )
