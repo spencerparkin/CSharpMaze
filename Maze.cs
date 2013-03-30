@@ -381,7 +381,8 @@ namespace CSharpMaze
             }
 
             Pen pen = new Pen( Color.White);
-            pen.Width = ( int )( minDistance / 2.0f );
+            int penWidth = ( int )( minDistance / 2.0f );
+            pen.Width = penWidth > 0 ? penWidth : 1;
             pen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
             pen.StartCap = System.Drawing.Drawing2D.LineCap.Round;
 
