@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Drawing;
 
 namespace CSharpMaze
 {
@@ -20,6 +21,12 @@ namespace CSharpMaze
             int millisecond = DateTime.Now.Millisecond;
             int seed = second * 1000 + millisecond;
             maze.Generate( seed );
+
+            Bitmap bitmap = new Bitmap( 1024, 1024, System.Drawing.Imaging.PixelFormat.Format24bppRgb );
+
+            maze.Render( bitmap );
+
+            bitmap.Save( "Maze.jpg" );
         }
     }
 }

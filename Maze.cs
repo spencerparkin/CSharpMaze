@@ -148,12 +148,49 @@ namespace CSharpMaze
         }
 
         public abstract void GenerateGraphShape();
+
+        protected float minX, maxX;
+        protected float minY, maxY;
+
+        // Expand our current region of the XY-plane to match the given aspect ratio.
+        public void ExpandGraphRegion( float aspectRatio )
+        {
+            float deltaX = maxX - minX;
+            float deltaY = maxY - minY;
+            float currentAspectRatio = deltaX / deltaY;
+
+            if( currentAspectRatio < aspectRatio )
+            {
+                float delta = 0.5f * ( deltaY * aspectRatio - deltaX );
+                minX -= delta;
+                maxX += delta;
+            }
+            else if( currentAspectRatio > aspectRatio )
+            {
+                float delta = 0.5f * ( deltaX / aspectRatio - deltaY );
+                minY -= delta;
+                maxY += delta;
+            }
+        }
+
+        public void GraphSpaceToImageSpace( Bitmap bitmap, ref Node.Point point, out int row, out int col )
+        {
+            float t = ( point.X - minX ) / ( maxX - minX );
+            col = ( int )( t * ( float )bitmap.Width );
+            t = ( point.Y - minY ) / ( maxY - minY );
+            row = ( int )( ( 1.0f - t ) * ( float )bitmap.Height );
+        }
     }
 
     class RectangularGraph : ShapeGraph
     {
         public RectangularGraph( int rowCount, int colCount )
         {
+            minX = -1.0f;
+            maxX = ( float )colCount;
+            minY = -1.0f;
+            maxY = ( float )rowCount;
+
             this.rowCount = rowCount;
             this.colCount = colCount;
         }
@@ -167,9 +204,13 @@ namespace CSharpMaze
             // Create all the nodes.
             for( int row = 0; row < rowCount; row++ )
             {
+                float y = ( float )( rowCount - row - 1 );
+
                 for( int col = 0; col < colCount; col++ )
                 {
-                    Node.Point location = new Node.Point( row, col );
+                    float x = ( float )col;    
+
+                    Node.Point location = new Node.Point( x, y );
                     Node node = CreateNode( location );
                     Insert( node );
                     nodeMatrix[ row, col ] = node;
@@ -224,8 +265,58 @@ namespace CSharpMaze
             return new Maze.Node( point );
         }
 
+        public void ImageSpaceAdjacency( Bitmap bitmap, Graph.Adjacency adjacency, out System.Drawing.Point drawPointA, out System.Drawing.Point drawPointB )
+        {
+            Node.Point pointA = adjacency.NodeA.Location;
+            Node.Point pointB = adjacency.NodeB.Location;
+
+            int row, col;
+            graph.GraphSpaceToImageSpace( bitmap, ref pointA, out row, out col );
+            drawPointA = new System.Drawing.Point( col, row );
+            graph.GraphSpaceToImageSpace( bitmap, ref pointB, out row, out col );
+            drawPointB = new System.Drawing.Point( col, row );
+        }
+
         public bool Render( Bitmap bitmap )
         {
+            if (spanningTree == null || spanningTree.SetOfNodes.Count == 0)
+                return false;
+
+            float aspectRatio = ( float )bitmap.Width / ( float )bitmap.Height;
+            graph.ExpandGraphRegion( aspectRatio );
+
+            Graphics graphics = Graphics.FromImage( bitmap );
+
+            Rectangle rectangle = new Rectangle( 0, 0, bitmap.Width, bitmap.Height );
+            graphics.FillRectangle( new SolidBrush( Color.Black ), rectangle );
+
+            float maxDistance = 0.0f;
+            foreach( Graph.Adjacency adjacency in spanningTree.SetOfAdjacencies )
+            {
+                System.Drawing.Point drawPointA, drawPointB;
+                ImageSpaceAdjacency( bitmap, adjacency, out drawPointA, out drawPointB );
+                float dx = drawPointA.X - drawPointB.X;
+                float dy = drawPointB.X - drawPointB.X;
+                float distance = ( float )Math.Sqrt( dx * dx + dy * dy );
+                if( maxDistance < distance )
+                    maxDistance = distance;
+            }
+
+            Pen pen = new Pen( Color.White);
+            pen.Width = ( int )( maxDistance / 2.0f );
+            pen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
+            pen.StartCap = System.Drawing.Drawing2D.LineCap.Round;
+
+            // Go draw all the path-ways of the maze.
+            foreach( Graph.Adjacency adjacency in spanningTree.SetOfAdjacencies )
+            {
+                System.Drawing.Point drawPointA, drawPointB;
+                ImageSpaceAdjacency( bitmap, adjacency, out drawPointA, out drawPointB );
+                graphics.DrawLine( pen, drawPointA, drawPointB );
+            }
+
+            // TODO: Also render solution if we have it.
+            
             return true;
         }
 
@@ -266,11 +357,18 @@ namespace CSharpMaze
                 {
                     Node.UnifySetsForEachOf( nodeA, nodeB );
                     setCount--;
+
+                    Graph.Adjacency mazePathway = new Graph.Adjacency( nodeA, nodeB );
+                    spanningTree.Insert( mazePathway );
                 }
 
                 if( setCount == 1 )
                     break;
             }
+
+            // TODO: Find solution too if asked to do so.
+            //       A starting and ending node will have to
+            //       be defined before a solution can be found.
         }
 
         private ShapeGraph graph;
