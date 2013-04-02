@@ -14,7 +14,7 @@ namespace CSharpMaze
 
         static void PrintUsage()
         {
-            System.Console.WriteLine( "Usage: CSharpMaze [rect|circle <rows cols|rings>] [imageFile <file>] [solve] [seed <seed>]" );
+            System.Console.WriteLine( "Usage: CSharpMaze [rect|circ <rows cols|rings>] [imageFile <file>] [solve] [seed <seed>]" );
         }
 
         // This is the program entry point.
